@@ -9,7 +9,7 @@ const CORNERS = ['tl', 'tr', 'bl', 'br'];   // top/bottom + left/right
 
 // ---- Settings (tweak here) ----
 const params = new URLSearchParams(location.search);
-const THRESHOLD = parseFloat(params.get('t')) || 0.35;  // per-window score that counts as a "hit" (calibrated: quiet-room noise peaked at 0.05, crow bursts mostly 0.3-1.0; override: ?t=0.2)
+const THRESHOLD = parseFloat(params.get('t')) || 0.2;   // per-window score that counts as a "hit" (quiet-room noise peaked at 0.05, clear crows 0.3-1.0, weaker/farther ones 0.2-0.3; override: ?t=0.3)
 const HITS_NEEDED = 2, HITS_OF = 3;  // fire when HITS_NEEDED of the last HITS_OF windows are hits
 const DEMO = params.has('demo');     // ?demo: fake detections at random intervals, no microphone
 const CALIB = params.has('calibrate');   // ?calibrate: label what you hear (crow / no crow) and get a suggested threshold
