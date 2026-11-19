@@ -1,0 +1,208 @@
+/* Design units: --u = 1 Figma px (frame is 393x852). Set in app.js, falls back to 1px. */
+:root {
+  --u: 1px;
+  --pink: #eccece;
+  --serif: "Gentium Book Plus", "Gentium Basic", Georgia, serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+
+* { box-sizing: border-box; margin: 0; }
+html, body { height: 100%; background: var(--pink); overscroll-behavior: none; }
+
+/* Phone-like column, centered on wide screens */
+#app {
+  position: relative;
+  width: 100%;
+  max-width: 520px;
+  height: 100vh; height: 100dvh;
+  margin: 0 auto;
+  overflow: hidden;
+  background: var(--pink);
+  -webkit-tap-highlight-color: transparent;
+  user-select: none; -webkit-user-select: none;
+}
+
+/* ---------- Ear: centered, top edge 164u above the middle (Figma y=262) ---------- */
+.ear {
+  position: absolute; z-index: 1;
+  left: calc(50% - 119.1 * var(--u));
+  top: calc(50% - 164 * var(--u));
+  width: calc(226.5 * var(--u));
+  height: calc(331.7 * var(--u));
+  padding: 0; border: 0; background: none; cursor: default;
+}
+.ear:disabled { cursor: default; }
+.ear-img, .airpod, .ear-front { position: absolute; display: block; pointer-events: none; }
+.ear-img { inset: 0; width: 100%; height: 100%; }
+
+/* AirPod sits in the ear in the intro and slides out when removed */
+/* Offsets = Figma position minus ear origin (77.4, 262) */
+.front-intersect { left: calc(7.6 * var(--u));  top: 0;                    width: calc(210.5 * var(--u)); height: calc(286.7 * var(--u)); }
+.front-v3        { left: calc(18.1 * var(--u)); top: calc(4.5 * var(--u)); width: calc(183.6 * var(--u)); height: calc(195.2 * var(--u)); }
+.airpod {
+  left: calc(129 * var(--u));
+  top: calc(163 * var(--u));
+  width: calc(76.7 * var(--u));
+  height: calc(162 * var(--u));
+  transform: rotate(149.64deg) scaleY(-1);   /* Figma: -149.64deg + flipped (Figma angles run counter-clockwise) */
+  transform-origin: 50% 50%;
+}
+/* Taking it out: pulled out along its own stem, to the lower right and off the ear (the drawn arrow).
+   One straight move with one easing, so it feels smooth: slow start, fast end.
+   Plugging it back in is the reverse path: fast start, slow end (it settles into the ear). */
+@keyframes airpod-out {
+  0%   { transform: translate(0, 0) rotate(149.64deg) scaleY(-1); opacity: 1; animation-timing-function: cubic-bezier(.55, .085, .68, .53); }
+  70%  { opacity: 1; animation-timing-function: linear; }
+  100% { transform: translate(calc(150 * var(--u)), calc(290 * var(--u))) rotate(156deg) scaleY(-1); opacity: 0; }
+}
+@keyframes airpod-in {
+  0%   { transform: translate(calc(150 * var(--u)), calc(290 * var(--u))) rotate(156deg) scaleY(-1); opacity: 0; animation-timing-function: cubic-bezier(.25, .46, .45, .94); }
+  30%  { opacity: 1; animation-timing-function: linear; }
+  100% { transform: translate(0, 0) rotate(149.64deg) scaleY(-1); opacity: 1; }
+}
+#app.airpod-out .airpod { animation: airpod-out .9s linear forwards; }
+#app.airpod-in .airpod  { animation: airpod-in .9s linear both; }
+/* No animation running (e.g. jumping states from the debug panel): keep it out of sight */
+#app:not([data-state="intro"]) .airpod { opacity: 0; transform: translate(calc(150 * var(--u)), calc(290 * var(--u))) rotate(156deg) scaleY(-1); }
+#app[data-state="intro"] .ear { pointer-events: none; }   /* intro: only the AirPod is tappable; later the whole ear ends the session */
+
+/* ---------- Crows: one per corner (tl / tr / bl / br), added by app.js ----------
+   .crow-wrap covers the screen and "pops" (scales up with a little overshoot) out of its corner;
+   .crow is the image in its final pose. Top-left and bottom-right are the Figma poses, the other two are mirrored.
+   app.js randomises --jx/--jy (offset), --jr (tilt), --js (size) per crow and --delay/--dur for the pop. */
+.crow-wrap {
+  position: absolute; inset: 0; z-index: 0;
+  pointer-events: none;
+  transform: scale(0);
+  transition: opacity 1s ease;
+  --delay: 0ms; --dur: 400ms;
+}
+.crow-wrap.tl { transform-origin: 0 0; }
+.crow-wrap.tr { transform-origin: 100% 0; }
+.crow-wrap.bl { transform-origin: 0 100%; }
+.crow-wrap.br { transform-origin: 100% 100%; }
+.crow-wrap.on { animation: pop var(--dur) cubic-bezier(.2, .9, .3, 1) var(--delay) both; }
+@keyframes pop {
+  0%   { transform: scale(0); }
+  65%  { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+.crow {
+  position: absolute;
+  width: calc(355.5 * var(--u));
+  height: calc(205.2 * var(--u));
+  max-width: none;
+  object-fit: cover;
+  pointer-events: none;
+  --jx: 0px; --jy: 0px; --jr: 0deg; --js: 1;
+  transform: translate(var(--jx), var(--jy)) var(--rest) rotate(var(--jr)) scale(var(--js));
+}
+/* Figma: top crow centre 34.4u from left / 83.2u from top; bottom crow centre 77.1u from right / 56.4u from bottom */
+.crow.tl, .crow.tr { top: calc(83.2 * var(--u) - 102.6 * var(--u)); }
+.crow.bl, .crow.br { bottom: calc(56.4 * var(--u) - 102.6 * var(--u)); }
+.crow.tl { left: calc(34.4 * var(--u) - 177.75 * var(--u)); --rest: rotate(51.75deg); }
+.crow.tr { right: calc(34.4 * var(--u) - 177.75 * var(--u)); --rest: scaleX(-1) rotate(51.75deg); }
+.crow.br { right: calc(77.1 * var(--u) - 177.75 * var(--u)); --rest: rotate(-146.82deg) scaleY(-1); }
+.crow.bl { left: calc(77.1 * var(--u) - 177.75 * var(--u)); --rest: scaleX(-1) rotate(-146.82deg) scaleY(-1); }
+
+/* ---------- Message bubbles (Figma: 8u padding, radius 8u, zig-zag tail; width follows the text) ---------- */
+.bubble {
+  position: absolute; z-index: 2;
+  width: max-content;                     /* hugs the text ... */
+  max-width: calc(230 * var(--u));        /* ... up to this width, then wraps; app.js trims wrapped bubbles to their longest line */
+  text-wrap: balance;
+  padding: calc(8 * var(--u));
+  background: #fff;
+  border-radius: calc(8 * var(--u));
+  color: #000;
+  font: calc(24 * var(--u))/calc(28 * var(--u)) var(--serif);
+  text-transform: uppercase;
+  text-align: center;
+  overflow-wrap: break-word;
+  filter: drop-shadow(0 calc(4 * var(--u)) calc(2 * var(--u)) rgba(0,0,0,.25));   /* shadow follows the tail too */
+  opacity: 0;
+  transition: opacity .5s ease;
+  pointer-events: none;
+  --dy: 0px;                            /* pushed away from other bubbles by app.js */
+}
+/* Pops out of the corner its tail points to (scale up with a little overshoot) */
+.bubble.tl { transform-origin: 0 0; }
+.bubble.tr { transform-origin: 100% 0; }
+.bubble.bl { transform-origin: 0 100%; }
+.bubble.br { transform-origin: 100% 100%; }
+.bubble.on { opacity: 1; transition-duration: .1s; animation: pop .35s cubic-bezier(.2, .9, .3, 1) both; }
+
+/* Bubbles are anchored to the SAME screen corner as their crow, so a bubble always stays next to its crow's beak
+   whatever the screen shape (Figma 393x852: top bubble 140.9u from its side edge and 179.5u from the top,
+   bottom bubble 168u from its side edge and 168u from the bottom; right side mirrored).
+   --jx/--jy: the crow's random offset, copied to its bubble so the two move together.
+   --dy: pushed towards the ear by app.js when two bubbles would overlap. */
+.bubble { --jx: 0px; --jy: 0px; }
+.bubble.tl, .bubble.tr { top: calc(179.5 * var(--u) + var(--jy) + var(--dy)); }
+.bubble.bl, .bubble.br { bottom: calc(168 * var(--u) - var(--jy) - var(--dy)); }
+.bubble.tl { left: calc(140.9 * var(--u) + var(--jx)); }
+.bubble.bl { left: calc(168 * var(--u) + var(--jx)); }
+.bubble.tr { right: calc(140.9 * var(--u) - var(--jx)); }
+.bubble.br { right: calc(168 * var(--u) - var(--jx)); }
+
+/* Tail: Figma frame 23.3 x 37.6u; top tail rotated -6.18deg, bottom tail 173.82deg */
+.tail {
+  position: absolute; display: block;
+  width: calc(19.612 * var(--u)); height: calc(35.721 * var(--u));
+  pointer-events: none;
+}
+.bubble.tl .tail { left: calc(-10 * var(--u)); top: calc(-27.5 * var(--u)); transform: rotate(-6.18deg); }
+.bubble.tr .tail { right: calc(-10 * var(--u)); top: calc(-27.5 * var(--u)); transform: scaleX(-1) rotate(-6.18deg); }
+.bubble.br .tail { right: calc(-9.6 * var(--u)); bottom: calc(-26.2 * var(--u)); transform: rotate(173.82deg); }
+.bubble.bl .tail { left: calc(-10 * var(--u)); bottom: calc(-26.2 * var(--u)); transform: scaleX(-1) rotate(173.82deg); }
+/* Fade-out after ~20 s without a detection */
+.crow-wrap.fade, .bubble.fade { opacity: 0; }
+.bubble.fade { transition-duration: 1s; }
+
+/* ---------- Error text (Figma y=176) ---------- */
+.error {
+  position: absolute;
+  left: 0; right: 0;
+  /* Anchored by its bottom edge: always 24u above the ear (ear top = 164u above the centre), however many lines it has.
+     Figma: 2-line text ends at y=238, ear starts at y=262. */
+  bottom: calc(50% + 164 * var(--u) + 24 * var(--u));
+  padding: 0 calc(16 * var(--u));
+  font: calc(24 * var(--u))/1.25 var(--mono);
+  text-align: center;
+  white-space: pre-line;
+  opacity: 0;
+  transition: opacity .5s ease;
+  pointer-events: none;
+}
+#app[data-state="error"] .error { opacity: 1; }
+#app:not([data-state="intro"]) .ear { cursor: pointer; }
+#app[data-state="intro"]:not(.airpod-out) .airpod { pointer-events: auto; cursor: pointer; }  /* only the AirPod is tappable in the intro */  /* tap ear to retry */
+
+/* Gentle "listening" pulse on the ear */
+#app[data-state="listening"] .ear-img,
+#app[data-state="active"] .ear-img { animation: breathe 3s ease-in-out infinite; }
+@keyframes breathe { 50% { transform: scale(1.015); } }
+
+/* Reduced motion: no sliding, spinning or breathing - things just fade in and out */
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; }
+  .crow-wrap { transform: none !important; opacity: 0; transition: opacity .5s ease; }
+  .crow-wrap.on { opacity: 1; }
+  .crow-wrap.fade, .bubble.fade { opacity: 0; }
+  .airpod { transition: opacity .5s ease; }
+}
+
+/* ---------- ?debug panel (fixed at the bottom) and live scores (top-left) ---------- */
+#debug {
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 10;
+  display: flex; flex-wrap: wrap; gap: 4px; padding: 6px;
+  background: rgba(255,255,255,.7);
+  font: 12px var(--mono);
+}
+#debug button { flex: 1 1 auto; padding: 8px 6px; font: inherit; border: 1px solid #000; border-radius: 4px; background: #fff; }
+#scores { position: absolute; top: 6px; left: 6px; z-index: 10; margin: 0; padding: 4px 6px; font: 11px/1.3 var(--mono); background: rgba(255,255,255,.75); pointer-events: none; }
+
+/* ---------- ?calibrate ---------- */
+.calib-bar { position: absolute; left: 0; right: 0; bottom: 0; z-index: 10; display: flex; gap: 4px; padding: 6px; background: rgba(255,255,255,.7); font: 12px var(--mono); }
+.calib-bar button { flex: 1 1 auto; padding: 10px 6px; font: inherit; border: 1px solid #000; border-radius: 4px; background: #fff; }
+#calib-out { position: absolute; left: 6px; right: 6px; bottom: 62px; z-index: 10; margin: 0; padding: 4px 6px; font: 10px/1.35 var(--mono); background: rgba(255,255,255,.8); white-space: pre-wrap; pointer-events: none; }
