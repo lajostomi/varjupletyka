@@ -18,8 +18,8 @@ const PANEL = params.has('panel');   // ?panel: button panel to jump between sta
 // Level boost: the mic is asked NOT to apply automatic gain, so quiet or distant sounds arrive very faint.
 // Before the model sees a window we scale it up to a steady loudness (never in near-silence, never more than MAX_GAIN).
 const TARGET_RMS = 0.05;            // loudness the window is scaled to
-const MAX_GAIN = params.has('gain') ? parseFloat(params.get('gain')) : 20;   // ?gain=1 switches the boost off
-const SILENCE_RMS = 0.0015;         // quieter than this = silence: not boosted (would only amplify mic hiss)
+const MAX_GAIN = params.has('gain') ? parseFloat(params.get('gain')) : 150;  // ?gain=1 switches the boost off
+const SILENCE_RMS = 0.0001;         // quieter than this = digital silence: not boosted (a quiet phone mic hisses at about 0.0003)
 const AGC = params.has('agc');      // ?agc: let the browser apply its own automatic gain instead (test option)
 const WINDOW = 15600;             // samples YAMNet needs (0.975 s @ 16 kHz)
 const HOP_MS = 500;               // how often we run the model
