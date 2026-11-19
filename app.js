@@ -15,6 +15,12 @@ const DEMO = params.has('demo');     // ?demo: fake detections at random interva
 const CALIB = params.has('calibrate');   // ?calibrate: label what you hear (crow / no crow) and get a suggested threshold
 const DEBUG = params.has('debug') || CALIB;   // ?debug: live crow scores on screen (audio still works)
 const PANEL = params.has('panel');   // ?panel: button panel to jump between states and spawn crows (hidden by default)
+// Level boost: the mic is asked NOT to apply automatic gain, so quiet or distant sounds arrive very faint.
+// Before the model sees a window we scale it up to a steady loudness (never in near-silence, never more than MAX_GAIN).
+const TARGET_RMS = 0.05;            // loudness the window is scaled to
+const MAX_GAIN = params.has('gain') ? parseFloat(params.get('gain')) : 20;   // ?gain=1 switches the boost off
+const SILENCE_RMS = 0.0015;         // quieter than this = silence: not boosted (would only amplify mic hiss)
+const AGC = params.has('agc');      // ?agc: let the browser apply its own automatic gain instead (test option)
 const WINDOW = 15600;             // samples YAMNet needs (0.975 s @ 16 kHz)
 const HOP_MS = 500;               // how often we run the model
 const COOLDOWN_MS = 2500;         // min. time between two 'crowDetected' events
@@ -126,7 +132,7 @@ async function start() {
 
   try {
     stream = await navigator.mediaDevices.getUserMedia({
-      audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false,
+      audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: AGC,
                channelCount: { ideal: 2 } }     // ask for stereo; most phones still give mono
     });
   } catch (e) { return fail(ERR_NO_MIC); }     // denied, or no mic / insecure page
@@ -180,13 +186,28 @@ function push(buf, rate) {
   ring = merged;
 }
 
+// Scale a window to TARGET_RMS (clipped to +-1). Returns the scaled copy and what was done, for ?debug.
+let lastLevel = 0, lastGain = 1;
+function boost(x) {
+  let sum = 0;
+  for (let i = 0; i < x.length; i++) sum += x[i] * x[i];
+  const rms = Math.sqrt(sum / x.length);
+  lastLevel = rms; lastGain = 1;
+  if (rms < SILENCE_RMS || MAX_GAIN <= 1) return x;
+  const g = lastGain = Math.min(MAX_GAIN, Math.max(1, TARGET_RMS / rms));
+  if (g === 1) return x;
+  const y = new Float32Array(x.length);
+  for (let i = 0; i < x.length; i++) y[i] = Math.max(-1, Math.min(1, x[i] * g));
+  return y;
+}
+
 // ---- Run YAMNet on the latest window ----
 async function analyse() {
   if (busy || document.hidden || !ctx || ctx.state !== 'running' || ring.length < WINDOW) return;
   busy = true;
   try {
     const scores = tf.tidy(() => {
-      let out = model.predict(tf.tensor1d(ring));
+      let out = model.predict(tf.tensor1d(boost(ring)));
       if (Array.isArray(out)) out = out[0];       // [frames, 521]
       return out.max(0);                          // best score per class
     });
@@ -226,7 +247,8 @@ function showDebug(crowScores, best, data) {
 ` +
     `thr ${THRESHOLD}  hits [${hits.map(h => h ? 'x' : '.').join('')}] need ${HITS_NEEDED}/${HITS_OF}
 ` +
-    `top: ${classNames[top] || '#' + top} ${data[top].toFixed(2)}`;
+    `top: ${classNames[top] || '#' + top} ${data[top].toFixed(2)}\n` +
+    `level ${lastLevel.toFixed(4)}  gain x${lastGain.toFixed(1)}  (max x${MAX_GAIN})`;
 }
 
 // ---- Stereo: remember left/right energy of the last ~1 s (only if the mic gives 2 channels) ----
