@@ -319,14 +319,24 @@ function avoidOverlap(corner) {
   me.style.setProperty('--dy', dy + 'px');
 }
 
-// A crow stops speaking: its bubble fades out, the crow itself stays
+// A crow stops speaking: its bubble fades out and the crow leaves with it, freeing its corner for the next crow.
+// (Before, the silent crow stayed on screen and kept its corner, so after 3-4 crows every corner was taken,
+//  no new crow could appear, and every detection only restarted the fade timer: the page looked frozen.)
 function silence(corner) {
   const o = live[corner];
   speakers = speakers.filter(c => c !== corner);
-  if (!o || !o.bubble) return;
-  const b = o.bubble; o.bubble = null;
-  b.classList.remove('on');
-  setTimeout(() => b.remove(), 600);
+  if (!o || o.leaving) return;
+  o.leaving = true;
+  if (o.bubble) {
+    const b = o.bubble; o.bubble = null;
+    b.classList.remove('on');
+    setTimeout(() => b.remove(), 600);
+  }
+  o.crow.classList.add('fade');                 // fades out (CSS: 1 s), then the corner is free again
+  setTimeout(() => {
+    o.crow.remove();
+    if (live[corner] === o) delete live[corner];
+  }, FADE_MS);
 }
 
 // ---- Place a crow (and its bubble) in a corner; max 4 crows, one per corner, max 2 speaking ----
@@ -377,7 +387,8 @@ function spawnCrow(corner, text) {
 document.addEventListener('crowDetected', crowHeard);
 function crowHeard() {
   const c = pickCorner();
-  if (c) spawnCrow(c); else scheduleFade();
+  if (c) spawnCrow(c);
+  else { if (speakers.length) silence(speakers[0]); scheduleFade(); }   // no free corner: let the oldest crow leave
 }
 
 // ---- Fade everything out FADE_AFTER_MS after the last detection, then back to 'listening' ----
